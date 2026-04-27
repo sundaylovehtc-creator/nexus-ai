@@ -1,9 +1,9 @@
-// Nexus Brain — Skill Self-Generator (自学习循环)
+// Nexus Brain — Skill Self-Generator (按需生成，无次数限制)
 // 遇到新问题 → 自动生成 Skill → 下次同类问题秒解
-// 每天最多生成 3 个 Skill，每次最多消耗 5000 tokens
+// Skill生成本身不限次数（这是能力），对话token预算是另一回事
 
 import { Effect, Context } from "effect";
-import type { Skill, SkillGenBudget } from "./budget.js";
+import type { Skill } from "./budget.js";
 
 export interface SkillTemplate {
   name: string;
@@ -12,74 +12,53 @@ export interface SkillTemplate {
   content: string;
 }
 
-export class SkillGenLimitError extends Error {
-  constructor(public readonly budget: SkillGenBudget) {
-    super(`Skill generation limit reached: ${budget.usedToday}/${budget.maxPerDay}`);
-    this.name = "SkillGenLimitError";
-  }
-}
-
 export interface SkillGenerator {
-  readonly generate: (template: SkillTemplate) => Effect.Effect<Skill, SkillGenLimitError>;
+  readonly generate: (template: SkillTemplate) => Effect.Effect<Skill>;
   readonly shouldGenerate: (task: string, existingSkills: Skill[]) => boolean;
-  readonly getBudget: () => SkillGenBudget;
+  readonly getGeneratedCount: () => number;
 }
 
 export const SkillGenerator = Context.GenericTag<SkillGenerator>("SkillGenerator");
 
-export function makeSkillGenerator(
-  onGenerate?: (skill: Skill) => void,
-  initialBudget?: Partial<SkillGenBudget>
-): SkillGenerator {
-  let budget: SkillGenBudget = {
-    usedToday: 0,
-    lastReset: Date.now(),
-    maxPerDay: 3,
-    maxTokensPerGen: 5000,
-    ...initialBudget,
-  };
+function generateSkillName(template: SkillTemplate): string {
+  const action = template.name.replace(/\s+/g, "-").toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 40);
+  return action || "skill";
+}
 
-  function resetIfNewDay() {
-    const today = new Date().setHours(0, 0, 0, 0);
-    if (budget.lastReset < today) {
-      budget.usedToday = 0;
-      budget.lastReset = today;
-    }
-  }
+function generateCompact(content: string): string {
+  const lines = content.split("\n");
+  const truncated = lines.slice(0, 20).join("\n");
+  return truncated.slice(0, 500);
+}
+
+export function makeSkillGenerator(
+  onGenerate?: (skill: Skill) => void
+): SkillGenerator {
+  let generatedCount = 0;
 
   // 判断是否应该生成 skill
+  // 核心原则：按需生成，不重复造轮子
   function checkShouldGenerate(task: string, existingSkills: Skill[]): boolean {
     const taskLower = task.toLowerCase();
-    // 检查是否有现成的 skill 能处理
+
     for (const s of existingSkills) {
+      // 完全匹配描述
+      if (s.description.toLowerCase() === taskLower) return false;
+      // 触发词命中
+      if (s.trigger.some(t => taskLower.includes(t.toLowerCase()))) return false;
+      // 描述包含任务关键词（宽松匹配）
+      const taskKeywords = taskLower.split(/\s+/).filter(w => w.length > 4);
       const descLower = s.description.toLowerCase();
-      const triggersLower = s.trigger.map(t => t.toLowerCase());
-      if (triggersLower.some(t => taskLower.includes(t))) return false;
-      if (descLower.includes(taskLower.slice(0, 50))) return false;
+      const matchCount = taskKeywords.filter(k => descLower.includes(k)).length;
+      if (matchCount >= 2) return false; // 已有skill能处理
     }
     return true;
-  }
-
-  // 生成 skill 名称
-  function generateSkillName(template: SkillTemplate): string {
-    const action = template.name.replace(/\s+/g, "-").toLowerCase();
-    return action;
-  }
-
-  // 生成 compact content
-  function generateCompact(content: string): string {
-    const lines = content.split("\n");
-    const truncated = lines.slice(0, 20).join("\n");
-    return `${truncated.slice(0, 500)}...`;
   }
 
   return {
     generate(template) {
       return Effect.gen(function* () {
-        resetIfNewDay();
-        if (budget.usedToday >= budget.maxPerDay) {
-          return yield* Effect.fail(new SkillGenLimitError(budget));
-        }
+        generatedCount++;
 
         const skill: Skill = {
           name: generateSkillName(template),
@@ -91,26 +70,22 @@ export function makeSkillGenerator(
           useCount: 0,
           budget: {
             tokensPerUse: 1000,
-            dailyLimit: 50,
+            dailyLimit: 999999, // 不限制
             priority: "medium",
           },
         };
 
-        budget = { ...budget, usedToday: budget.usedToday + 1 };
         onGenerate?.(skill);
         return skill;
       });
     },
 
     shouldGenerate(task, existingSkills) {
-      resetIfNewDay();
-      if (budget.usedToday >= budget.maxPerDay) return false;
       return checkShouldGenerate(task, existingSkills);
     },
 
-    getBudget() {
-      resetIfNewDay();
-      return { ...budget };
+    getGeneratedCount() {
+      return generatedCount;
     },
   };
 }
@@ -125,15 +100,16 @@ export function extractSkillTemplate(
   const contextLines = context.split("\n").filter(l => l.trim().length > 0);
 
   // 生成触发词：从任务描述中提取关键词
+  const stopWords = new Set(["如何", "怎么", "为什么", "什么", "请问", "帮我", "我想", "可以", "这个", "那个", "一下", "帮我"]);
   const words = taskClean.split(/\s+/)
     .filter(w => w.length > 3)
-    .filter(w => !["如何", "怎么", "为什么", "什么", "请问", "帮我", "我想"].includes(w));
+    .filter(w => !stopWords.has(w));
 
   const triggers = [...new Set(words)].slice(0, 5);
 
   return {
     name: taskClean.slice(0, 40),
-    description: `处理 ${triggers[0] || taskClean.slice(0, 30)} 相关任务`,
+    description: `${triggers[0] || taskClean.slice(0, 30)}相关任务 — 自动生成`,
     trigger: triggers,
     content: `# Skill: ${taskClean.slice(0, 50)}
 
