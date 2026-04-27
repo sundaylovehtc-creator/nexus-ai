@@ -1,0 +1,8 @@
+{
+  "name": "@nexus/channels",
+  "version": "0.1.0",
+  "type": "module",
+  "license": "MIT",
+  "main": "./src/index.ts",
+  "dependencies": {}
+}
