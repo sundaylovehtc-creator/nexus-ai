@@ -1,0 +1,21 @@
+{
+  "name": "nexus-ai",
+  "version": "0.1.0",
+  "type": "module",
+  "license": "MIT",
+  "description": "AI Agent fusion platform: Hermes + OpenCode + OpenClaw",
+  "scripts": {
+    "build": "bun run --bun ./src/build.ts",
+    "dev": "bun run --bun ./src/index.ts",
+    "typecheck": "bun --typecheck .",
+    "test": "bun test",
+    "setup": "bun run ./src/setup.ts"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "dependencies": {
+    "effect": "^3.10.0",
+    "zod": "^3.23.0"
+  }
+}
