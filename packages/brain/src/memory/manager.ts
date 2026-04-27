@@ -52,7 +52,8 @@ export interface MemoryManager {
 
 export const MemoryManager = Context.GenericTag<MemoryManager>("MemoryManager");
 
-const DEFAULT_MEMORY_DIR = path.join(process.env.HOME || "/root", ".nexus", "memory");
+import os from "node:os";
+const DEFAULT_MEMORY_DIR = path.join(os.homedir(), ".nexus", "memory");
 const RECENT_DAYS = 7;
 
 function atomicWrite(filePath: string, content: string): void {

@@ -41,7 +41,8 @@ export interface MemoryStore {
 export const MemoryStore = Context.GenericTag<MemoryStore>("MemoryStore");
 
 // Default memory directory
-const DEFAULT_MEMORY_DIR = path.join(process.env.HOME || "/root", ".nexus", "memory");
+import os from "node:os";
+const DEFAULT_MEMORY_DIR = path.join(os.homedir(), ".nexus", "memory");
 
 export function makeMemoryStore(memoryDir: string = DEFAULT_MEMORY_DIR): MemoryStore {
   function getFilePath(type: MemoryType): string {

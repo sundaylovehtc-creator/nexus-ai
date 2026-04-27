@@ -5,11 +5,11 @@
   "license": "MIT",
   "description": "AI Agent fusion platform: Hermes + OpenCode + OpenClaw",
   "scripts": {
-    "build": "bun run --bun ./src/build.ts",
-    "dev": "bun run --bun ./src/index.ts",
-    "typecheck": "bun --typecheck .",
-    "test": "bun test",
-    "setup": "bun run ./src/setup.ts"
+    "build": "npx tsc",
+    "dev": "node --loader ts-node/esm src/index.ts",
+    "typecheck": "npx tsc --noEmit",
+    "test": "node --test",
+    "setup": "node src/setup.ts"
   },
   "workspaces": [
     "packages/*"
@@ -20,6 +20,7 @@
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
+    "opencode-ai": "^1.14.27",
     "tsx": "^4.21.0",
     "typescript": "^6.0.3"
   }

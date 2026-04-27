@@ -19,7 +19,8 @@ export interface SkillRegistry {
 
 export const SkillRegistry = Context.GenericTag<SkillRegistry>("SkillRegistry");
 
-const DEFAULT_SKILLS_DIR = path.join(process.env.HOME || "/root", ".nexus", "skills");
+import os from "node:os";
+const DEFAULT_SKILLS_DIR = path.join(os.homedir(), ".nexus", "skills");
 
 function parseFrontmatter(content: string): { meta: Record<string, unknown>, body: string } {
   const match = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
