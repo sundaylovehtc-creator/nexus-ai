@@ -2,7 +2,7 @@
 // Inspired by OpenCode anomalyco/agent.ts (MIT licensed)
 
 import { Effect, Context, Layer } from "effect";
-import { TokenBudget, makeTokenBudget, DEFAULT_BUDGET, TokenBudgetError } from "./effects/token-budget.js";
+import { TokenBudget, makeTokenBudget, DEFAULT_BUDGET, TokenBudgetError } from "./effects/nexus-context.js";
 
 // Message types
 export interface Message {
