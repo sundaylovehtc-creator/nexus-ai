@@ -106,26 +106,31 @@ export function makeOpenRouterProvider(config: OpenRouterConfig): ModelProvider 
 
 // Model list for OpenRouter
 export const OPENROUTER_MODELS = {
-  // Anthropic
+  // Anthropic (需要付费)
   "claude-3.5-sonnet": { id: "anthropic/claude-3.5-sonnet", contextWindow: 200_000 },
   "claude-3-opus": { id: "anthropic/claude-3-opus", contextWindow: 200_000 },
   "claude-3-haiku": { id: "anthropic/claude-3-haiku", contextWindow: 200_000 },
-  // OpenAI
+  // OpenAI (需要付费)
   "gpt-4o": { id: "openai/gpt-4o", contextWindow: 128_000 },
   "gpt-4o-mini": { id: "openai/gpt-4o-mini", contextWindow: 128_000 },
   "gpt-4-turbo": { id: "openai/gpt-4-turbo", contextWindow: 128_000 },
-  // Google
+  // Google (部分免费)
   "gemini-1.5-pro": { id: "google/gemini-1.5-pro", contextWindow: 1_000_000 },
   "gemini-1.5-flash": { id: "google/gemini-1.5-flash", contextWindow: 1_000_000 },
-  // DeepSeek
+  "gemini-3-12b-it:free": { id: "google/gemma-3-12b-it:free", contextWindow: 32_000 },
+  "minimax-m2.5:free": { id: "minimax/minimax-m2.5:free", contextWindow: 32_000 },
+  // DeepSeek (需要付费)
   "deepseek-chat": { id: "deepseek/deepseek-chat", contextWindow: 64_000 },
-  // Mistral
-  "mistral-large": { id: "mistralai/mistral-large", contextWindow: 32_000 },
-  // Meta
+  // Meta (Llama免费)
+  "llama-3.3-70b-instruct:free": { id: "meta-llama/llama-3.3-70b-instruct:free", contextWindow: 128_000 },
+  "llama-3.2-3b-instruct:free": { id: "meta-llama/llama-3.2-3b-instruct:free", contextWindow: 128_000 },
   "llama-3-70b": { id: "meta-llama/llama-3-70b-instruct", contextWindow: 128_000 },
   "llama-3-8b": { id: "meta-llama/llama-3-8b-instruct", contextWindow: 128_000 },
+  // Mistral
+  "mistral-large": { id: "mistralai/mistral-large", contextWindow: 32_000 },
   // Cheap options
   "qwen-2.5-72b": { id: "qwen/qwen-2.5-72b-instruct", contextWindow: 32_000 },
+  "qwen3.6-flash": { id: "qwen/qwen3.6-flash", contextWindow: 1_000_000 },
   "phi-3-medium": { id: "microsoft/phi-3-medium", contextWindow: 128_000 },
 } as const;
 
