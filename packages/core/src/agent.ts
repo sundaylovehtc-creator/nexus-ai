@@ -175,6 +175,10 @@ export function makeNexusAgent(
         return compressed;
       });
     },
+
+    addMessage(session, message) {
+      return addMessageToSession(session, message);
+    },
   };
 }
 
@@ -213,7 +217,7 @@ export function NexusAgentLayer(
   provider: ModelProvider,
   tools: Tool[],
   config: AgentConfig
-): Layer<NXUSAgent> {
+): Layer.Layer<NexusAgent> {
   const budget = makeTokenBudget();
 
   return Layer.effect(

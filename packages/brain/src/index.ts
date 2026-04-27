@@ -1,3 +1,5 @@
-// Nexus Brain — unified export
-export { makeMemoryStore, type MemoryStore, type MemoryEntry, type MemoryType } from "./memory/memory-store.js";
-export { compactSkill, getSkillAtTier, canGenerateSkill, useSkillGenBudget, DEFAULT_SKILL_GEN } from "./skills/budget.js";
+// Nexus Brain — Public API
+export { makeMemoryManager, type MemoryManager, type MemoryEntry, type MemoryLayers } from "./memory/manager.js";
+export { makeDreamingEngine, type DreamingEngine, type DreamConfig, type DreamResult, DEFAULT_DREAM_CONFIG } from "./dreaming/engine.js";
+export { makeSkillGenerator, extractSkillTemplate, type SkillGenerator, type SkillTemplate } from "./skills/self-generator.js";
+export { makeSkillRegistry, type SkillRegistry } from "./skills/registry.js";

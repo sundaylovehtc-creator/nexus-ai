@@ -60,7 +60,7 @@ export class TokenBudgetError extends Error {
 export interface TokenBudget {
   readonly check: (type: keyof typeof DEFAULT_BUDGET, tokens: number) => Effect.Effect<void, TokenBudgetError>;
   readonly deduct: (type: keyof typeof DEFAULT_BUDGET, tokens: number) => Effect.Effect<void, TokenBudgetError>;
-  readonly getUsage: () => Effect.Effect<TokenBudget>;
+  readonly getUsage: () => Effect.Effect<TokenUsage>;
   readonly resetIfNewDay: () => Effect.Effect<void>;
   readonly getCost: (model: string, inputTokens: number, outputTokens: number) => number;
 }
