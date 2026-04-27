@@ -8,7 +8,7 @@ import { makeTelegramChannel, runTelegramPolling } from "../packages/channels/sr
 import { makeMemoryStore } from "../packages/brain/src/memory/memory-store.js";
 import { makeTokenBudget } from "../packages/core/src/effects/nexus-context.js";
 import { makeNexusAgent } from "../packages/core/src/agent.js";
-import { DEFAULT_SKILLS_DIR } from "../packages/brain/src/skills/loader.js";
+import { makeOpenRouterProvider, OPENROUTER_MODELS } from "../packages/runtime/src/openrouter-provider.js";
 
 interface InMemorySkill {
   name: string;
@@ -128,58 +128,96 @@ async function main() {
   const memory = makeMemoryStore();
   const budget = makeTokenBudget();
 
-  const mockProvider = {
-    generate(messages: Array<{ role: string; content: string }>) {
-      const last = messages.at(-1);
-      return Promise.resolve({
-        content: `[Nexus] Echo: ${last?.content.slice(0, 80)}...`,
-        usage: { input: 100, output: 50 },
-        model: "mock",
-      });
-    },
-  };
+  // Get API key
+  const openRouterKey = process.env.OPENROUTER_API_KEY;
+  if (!openRouterKey) {
+    console.log("❌ OPENROUTER_API_KEY not set. Copy .env.example to .env and add your key.");
+    return;
+  }
+
+  // Create provider
+  const defaultModel = process.env.NEXUS_DEFAULT_MODEL || "anthropic/claude-3-haiku";
+  const provider = makeOpenRouterProvider({
+    apiKey: openRouterKey,
+    defaultModel,
+  });
+  console.log(`✅ OpenRouter provider initialized with model: ${defaultModel}`);
 
   const agent = makeNexusAgent(
-    mockProvider as any,
-    [], // tools — skills provide guidance, not executable tools yet
+    provider as any,
+    [],
     {
-      model: "gpt-4o-mini",
-      compressionModel: "gpt-4o-mini",
-      maxContextTokens: 100_000,
-      temperature: 0.7,
+      model: defaultModel,
+      compressionModel: process.env.NEXUS_COMPRESSION_MODEL || "openai/gpt-4o-mini",
+      maxContextTokens: Number(process.env.NEXUS_MAX_CONTEXT_TOKENS) || 100_000,
+      temperature: Number(process.env.NEXUS_TEMPERATURE) || 0.7,
     },
     budget
   );
 
+  // Check Telegram token
   const tgToken = process.env.NEXUS_TELEGRAM_TOKEN;
   if (!tgToken) {
-    console.log("⚠️  Set NEXUS_TELEGRAM_TOKEN env var, then: bun run src/index.ts");
-    return;
-  }
+    console.log("⚠️  NEXUS_TELEGRAM_TOKEN not set — running without Telegram");
+    console.log("   Set it in .env or export NEXUS_TELEGRAM_TOKEN=...");
+    // Continue anyway for testing
+  } else {
+    const tg = makeTelegramChannel({ token: tgToken });
+    console.log("📡 Telegram polling started");
 
-  const tg = makeTelegramChannel({ token: tgToken });
-  console.log("📡 Telegram polling started");
+    try {
+      await Effect.runPromise(
+        runTelegramPolling(tg, (msg) =>
+          Effect.gen(function* () {
+            console.log(`💬 ${msg.username || msg.firstName}: ${msg.text}`);
 
-  try {
-    await Effect.runPromise(
-      runTelegramPolling(tg, (msg) =>
-        Effect.gen(function* () {
-          console.log(`💬 ${msg.username || msg.firstName}: ${msg.text}`);
+            // Match skills
+            const matchedSkills = matchSkillsByQuery(msg.text);
+            let skillContext = "";
+            if (matchedSkills.length > 0) {
+              skillContext = `\n\nRelevant skills for your query:\n${matchedSkills.map(s =>
+                `## ${s.name}\n${s.content}`
+              ).join("\n\n")}`;
+            }
 
-          const matchedSkills = matchSkillsByQuery(msg.text);
-          let response = "Nexus online!";
-          if (matchedSkills.length > 0) {
-            response = `Nexus online! Matched skills:\n${matchedSkills.map(s =>
-              `## ${s.name}\n${s.content}`
-            ).join("\n\n")}`;
-          }
+            // Build messages with skills
+            const systemMsg = {
+              id: "system",
+              role: "system" as const,
+              content: buildSystemPrompt(),
+              timestamp: Date.now(),
+            };
+            const userMsg = {
+              id: msg.id,
+              role: "user" as const,
+              content: msg.text + skillContext,
+              timestamp: Date.now(),
+            };
 
-          yield* tg.sendMessage(msg.chatId, response);
-        })
-      )
-    );
-  } catch (e) {
-    console.error("Fatal:", e);
+            // Run agent
+            const session = {
+              id: msg.chatId,
+              userId: String(msg.chatId),
+              messages: [userMsg],
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+              contextTokens: 0,
+            };
+
+            try {
+              const result = yield* agent.run(session, msg.text + skillContext);
+              yield* tg.sendMessage(msg.chatId, result);
+            } catch (e) {
+              const errMsg = e instanceof Error ? e.message : String(e);
+              console.error(`Agent error: ${errMsg}`);
+              yield* tg.sendMessage(msg.chatId, `Error: ${errMsg}`);
+            }
+          })
+        )
+      );
+    } catch (e) {
+      console.error("Telegram polling error:", e);
+    }
   }
 }
 
