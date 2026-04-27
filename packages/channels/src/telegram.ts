@@ -69,3 +69,20 @@ export function makeTelegramChannel(config: TelegramConfig): TelegramChannel {
     },
   };
 }
+
+export function runTelegramPolling(
+  channel: TelegramChannel,
+  handler: (msg: TelegramMessage) => Effect.Effect<void, Error>,
+): Effect.Effect<void, Error> {
+  return Effect.gen(function* () {
+    let offset = 0;
+    while (true) {
+      const updates = yield* channel.getUpdates(offset);
+      for (const msg of updates) {
+        yield* handler(msg);
+        offset = msg.updateId + 1;
+      }
+      yield* Effect.sleep(100);
+    }
+  });
+}

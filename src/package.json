@@ -1,0 +1,7 @@
+{
+  "name": "@nexus/cli",
+  "version": "0.1.0",
+  "type": "module",
+  "license": "MIT",
+  "bin": "./index.ts"
+}
